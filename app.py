@@ -24,7 +24,7 @@ def streamlit_settings():
         layout="wide",
         initial_sidebar_state="collapsed")
 
-    with open("src\styles\main.css") as f:
+    with open("src/styles/main.css") as f:
         st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
     #count = st_autorefresh(interval=5 * 60 * 1000, limit=100, key="fizzbuzzcounter")
