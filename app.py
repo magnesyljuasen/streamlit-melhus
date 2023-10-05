@@ -7,15 +7,17 @@ from cognite.client.credentials import Token
 from bs4 import BeautifulSoup
 from pathlib import Path
 import base64
-from folium import IFrame
+import folium
+from streamlit_folium import st_folium
 import imageio as iio
 import numpy as np
-from old._map import Map
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from streamlit_extras.chart_container import chart_container
 import plotly.express as px
 import plotly.graph_objects as go
+
+
 
 def streamlit_settings():
     st.set_page_config(
@@ -164,14 +166,22 @@ def kpa_to_percent(df):
 
 def plot_gauge(value, text):
     if text == "Helsetilstand":
-        gauge_range = {'axis': {'range': [None, 100]}}
+        gauge_range = {
+            'axis' : {'range': [None, 100]},
+            'steps' : [
+                {'range' : [0, 50], 'color' : 'lightgray'},
+                {'range' : [50, 100], 'color' : 'gray'}
+            ],
+            }
     else:
-        gauge_range = {'axis': {'range': [None, 50000]}}
+        gauge_range = {
+            'axis' : {'range': [None, 50000]}
+            }
     fig = go.Figure(go.Indicator(
+        domain = {'x': [0, 1], 'y': [0, 1]},
         mode = "gauge+number",
         value = value,
         gauge = gauge_range,
-        domain = {'x': [0, 1], 'y': [0, 1]},
         title = {'text': text}))
 
     st.plotly_chart(fig, use_container_width=True, config = {'displayModeBar': False,})# 'staticPlot': True})
@@ -184,7 +194,8 @@ def varmeveksler(df, series_name):
         last_pa_value = int(df.to_numpy()[-1])
         tab1, tab2 = st.tabs(["Helsetilstand", "Trykkdifferanse"])
         with tab1:
-            plot_gauge(value = kpa_to_percentage(last_pa_value/1000), text = "Helsetilstand")
+            last_kpa_value = kpa_to_percentage(last_pa_value/1000)
+            plot_gauge(value = last_kpa_value, text = "Helsetilstand")
         with tab2:
             plot_gauge(value = last_pa_value, text = "Trykkdifferanse")
     with c2:
@@ -197,20 +208,40 @@ def varmeveksler(df, series_name):
             y = df[series_name].to_numpy()
             plot_kpa(x = df.index.values, y = y)
 
+def map(bankhallen_color = "green", bankhallen_helsetilstand = 100, skoleflata_color = "green", skoleflata_helsetilstand = 100):
+    melhus = [63.285510, 10.271003]
+    bankhallen = [63.284899, 10.265603]
+    skoleflata = [63.286260, 10.262300]
+    #--
+    m = folium.Map(location=melhus, zoom_start=15)
+    #--
+    marker = folium.Marker(bankhallen, tooltip = "Bankhallen", icon=folium.Icon(icon="glyphicon-home", color=bankhallen_color))
+    marker.add_to(m)
+    #--
+    marker = folium.Marker(skoleflata, tooltip = "Skoleflata", icon=folium.Icon(icon="glyphicon-home", color=skoleflata_color))
+    marker.add_to(m)
+    #--
+    st_folium(m, use_container_width=True, returned_objects=[])
+    
+
 def main():
     streamlit_settings()
     properate = Properate(ID = "AH_7224_Gammelbakkan_15")
     #--
-    st.header("Varmeveksler, Gimse skole")
+    st.title("Varmevekslere")
+    #--
+    st.header("Bankhallen")
     time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
     df, metadata = properate.get_timeseries(time_series)
     varmeveksler(df, series_name = time_series)
     #--
-#    st.header("Varmeveksler, Gimse skole")
-#    time_series = "TR_7224_Gammelbakkan_15+GB15=320.003-RP403"
-#    df, metadata = properate.get_timeseries(time_series)
-#    varmeveksler(df, series_name = time_series)
-    
+    st.header("Skoleflata")
+    time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
+    df, metadata = properate.get_timeseries(time_series)
+    varmeveksler(df, series_name = time_series)
+    #--
+    map()
+
         
 
 if __name__ == "__main__":
