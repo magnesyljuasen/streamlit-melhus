@@ -3,11 +3,16 @@
 
 * {font-family: 'Montserrat';}
 
+section[tabindex="0"] {
+    overflow-x: hidden;
+  }
+
 a {
     text-decoration: none;
     color: #1d3c34 !important;
     font-weight: 400;
 }
+
 
 a:hover {
     color: #48a23f !important;

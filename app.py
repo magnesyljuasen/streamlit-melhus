@@ -30,6 +30,14 @@ def streamlit_settings():
         st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
     #count = st_autorefresh(interval=5 * 60 * 1000, limit=100, key="fizzbuzzcounter")
+    hide_img_fs = '''
+        <style>
+        button[title="View fullscreen"]{
+            visibility: hidden;}
+        </style>
+        '''
+    st.markdown(hide_img_fs, unsafe_allow_html=True)
+
 
 class Properate:
     def __init__(self, ID = "AH_7224_Gammelbakkan_15"):
@@ -207,8 +215,19 @@ def varmeveksler(df, series_name):
         with tab2:
             y = df[series_name].to_numpy()
             plot_kpa(x = df.index.values, y = y)
+    return last_kpa_value
 
-def map(bankhallen_color = "green", bankhallen_helsetilstand = 100, skoleflata_color = "green", skoleflata_helsetilstand = 100):
+def map(bankhallen_helsetilstand, skoleflata_helsetilstand):
+    if bankhallen_helsetilstand == 100:
+        bankhallen_color = "green"
+    else:
+        bankhallen_color = "red"
+    #--
+    if skoleflata_helsetilstand == 100:
+        skoleflata_color = "green"
+    else:
+        skoleflata_color = "red"
+    #--
     melhus = [63.285510, 10.271003]
     bankhallen = [63.284899, 10.265603]
     skoleflata = [63.286260, 10.262300]
@@ -233,14 +252,14 @@ def main():
     st.header("Bankhallen")
     time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
     df, metadata = properate.get_timeseries(time_series)
-    varmeveksler(df, series_name = time_series)
+    bankhallen_helsetilstand = varmeveksler(df, series_name = time_series)
     #--
     st.header("Skoleflata")
     time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
     df, metadata = properate.get_timeseries(time_series)
-    varmeveksler(df, series_name = time_series)
+    skoleflata_helsetilstand = varmeveksler(df, series_name = time_series)
     #--
-    map()
+    map(bankhallen_helsetilstand = bankhallen_helsetilstand, skoleflata_helsetilstand = skoleflata_helsetilstand)
 
         
 
