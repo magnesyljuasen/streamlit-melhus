@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"features": [
+{ "type": "Feature", "properties": { "Name": "Point A", "Latitude": 63.3124, "Longitude": 10.3057, "ALAND": 1000 }, "geometry": { "type": "Point", "coordinates": [ 10.3057, 63.3124 ] } },
+{ "type": "Feature", "properties": { "Name": "Point B", "Latitude": 63.3142, "Longitude": 10.3048, "ALAND": 2000 }, "geometry": { "type": "Point", "coordinates": [ 10.3048, 63.3142 ] } },
+{ "type": "Feature", "properties": { "Name": "Point C", "Latitude": 63.313, "Longitude": 10.3074, "ALAND": 3000 }, "geometry": { "type": "Point", "coordinates": [ 10.3074, 63.313 ] } }
+]
+}
