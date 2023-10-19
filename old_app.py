@@ -8,7 +8,6 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 import base64
 import folium
-from folium.plugins import HeatMapWithTime
 from streamlit_folium import st_folium
 import imageio as iio
 import numpy as np
@@ -17,7 +16,6 @@ from streamlit_autorefresh import st_autorefresh
 from streamlit_extras.chart_container import chart_container
 import plotly.express as px
 import plotly.graph_objects as go
-
 
 def streamlit_settings():
     st.set_page_config(
@@ -216,11 +214,16 @@ def varmeveksler(df, series_name):
             plot_kpa(x = df.index.values, y = y)
     return last_kpa_value
 
-def get_last_week(time_series, properate):
-    df, metadata = properate.get_timeseries(time_series)
-    return df.to_numpy()[-(24 * 7):], df, metadata
-
-def map():
+def map(bankhallen_helsetilstand, skoleflata_helsetilstand):
+    if bankhallen_helsetilstand == 100:
+        bankhallen_color = "green"
+    else:
+        bankhallen_color = "red"
+    #--
+    if skoleflata_helsetilstand == 100:
+        skoleflata_color = "green"
+    else:
+        skoleflata_color = "red"
     #--
     melhus = [63.285510, 10.271003]
     bankhallen = [63.284899, 10.265603]
@@ -228,83 +231,32 @@ def map():
     #--
     m = folium.Map(location=melhus, zoom_start=15)
     #--
-    marker = folium.Marker(bankhallen, tooltip = "Bankhallen", icon=folium.Icon(icon="glyphicon-home", color="green"))
+    marker = folium.Marker(bankhallen, tooltip = "Bankhallen", icon=folium.Icon(icon="glyphicon-home", color=bankhallen_color))
     marker.add_to(m)
     #--
-    marker = folium.Marker(skoleflata, tooltip = "Skoleflata", icon=folium.Icon(icon="glyphicon-home", color="green"))
+    marker = folium.Marker(skoleflata, tooltip = "Skoleflata", icon=folium.Icon(icon="glyphicon-home", color=skoleflata_color))
     marker.add_to(m)
     #--
     st_folium(m, use_container_width=True, returned_objects=[])
     
 
-
 def main():
     streamlit_settings()
     properate = Properate(ID = "AH_7224_Gammelbakkan_15")
-    map()
-    c1, c2 = st.columns(2)
-    with c1:
-        #-- solceller
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- solceller streamet
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-RE001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:        
-        #-- spotpris x energiopptak brønn
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+Common=100.001-OC001-BB001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- verdi solceller
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 1
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 2
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 3
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    
-
-
-
-
-
     #--
-#    st.title("Varmevekslere")
+    st.title("Varmevekslere")
     #--
-#    st.header("Bankhallen")
-#    time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
-#    df, metadata = properate.get_timeseries(time_series)
-#    bankhallen_helsetilstand = varmeveksler(df, series_name = time_series)
+    st.header("Bankhallen")
+    time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
+    df, metadata = properate.get_timeseries(time_series)
+    bankhallen_helsetilstand = varmeveksler(df, series_name = time_series)
     #--
-#    st.header("Skoleflata")
-#    time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
-#    df, metadata = properate.get_timeseries(time_series)
-#    skoleflata_helsetilstand = varmeveksler(df, series_name = time_series)
+    st.header("Skoleflata")
+    time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
+    df, metadata = properate.get_timeseries(time_series)
+    skoleflata_helsetilstand = varmeveksler(df, series_name = time_series)
     #--
-#    map(bankhallen_helsetilstand = bankhallen_helsetilstand, skoleflata_helsetilstand = skoleflata_helsetilstand)
+    map(bankhallen_helsetilstand = bankhallen_helsetilstand, skoleflata_helsetilstand = skoleflata_helsetilstand)
         
 if __name__ == "__main__":
     main()
