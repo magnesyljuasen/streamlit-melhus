@@ -104,7 +104,7 @@ sortedcontainers==2.4.0
 soupsieve==2.5
 st-annotated-text==4.0.1
 stack-data==0.6.2
-streamlit==1.27.1
+streamlit==1.27.2
 streamlit-autorefresh==1.0.1
 streamlit-camera-input-live==0.2.0
 streamlit-card==0.0.61
