@@ -216,9 +216,9 @@ def get_last_week(time_series, properate):
 
 def show_pydeck_map(df, last_value):
     view = pdk.data_utils.compute_view(df[["lng", "lat"]])
-    view.pitch = 45
-    view.bearing = 10
-    view.zoom = 14
+    view.pitch = 140
+    view.bearing = 70
+    view.zoom = 14.5
 
     color = 0
     if last_value > 10 and last_value < 20:
