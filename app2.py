@@ -345,7 +345,7 @@ if __name__ == "__main__":
                 df_merged_production['Produsert fornybar energi akkumulert'] = df_merged_production["Produsert fornybar energi"].cumsum()
                 maximum_value_produced = int(np.max(df_merged_production['Produsert fornybar energi akkumulert'])*1.1)
 
-                fig = px.line(df_merged_production, x=df_merged_production.index, y=df_merged_production['Produsert fornybar energi akkumulert'], title=f'Produsert fornybar energi<br>• Totalt: {int(df_merged_production["Produsert fornybar energi akkumulert"][-1]):,} kWh<br>• Siste 24 timer: {int(np.sum(df_merged_production["Produsert fornybar energi"][-24:-1])):,} kW'.replace(",", " "))
+                fig = px.line(df_merged_production, x=df_merged_production.index, y=df_merged_production['Produsert fornybar energi akkumulert'], title=f'Produsert fornybar energi<br>• Totalt: {int(df_merged_production["Produsert fornybar energi akkumulert"][-1]):,} kWh<br>• Siste 24 timer: {int(np.sum(df_merged_production["Produsert fornybar energi"][-24:-1])):,} kWh'.replace(",", " "))
                 fig.update_traces(line_color='#1d3c34', line_width=2)
                 fig.update_xaxes(
                     title_text='',
