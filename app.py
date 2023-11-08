@@ -17,7 +17,9 @@ from streamlit_autorefresh import st_autorefresh
 from streamlit_extras.chart_container import chart_container
 import plotly.express as px
 import plotly.graph_objects as go
-
+import pydeck as pdk
+import pandas as pd
+from src.time_loop import time_loop
 
 def streamlit_settings():
     st.set_page_config(
@@ -29,7 +31,6 @@ def streamlit_settings():
     with open("src/styles/main.css") as f:
         st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
-    #count = st_autorefresh(interval=5 * 60 * 1000, limit=100, key="fizzbuzzcounter")
     hide_img_fs = '''
         <style>
         button[title="View fullscreen"]{
@@ -107,7 +108,7 @@ def plot_percentages(x, y):
     fig.update_layout(xaxis_title="Tid", yaxis_title="Prosent [%]")
     fig["data"][0]["showlegend"] = False
     fig.update_layout(
-    margin=dict(l=50,r=50,b=10,t=10,pad=0),
+    margin=dict(l=0,r=0,b=0,t=0,pad=0),
     yaxis_title="Prosent [%]",
     legend=dict(yanchor="top", y=0.98, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)")
     )
@@ -131,7 +132,7 @@ def plot_kpa(x, y):
     fig.update_layout(xaxis_title="Tid", yaxis_title="Prosent [%]")
     fig["data"][0]["showlegend"] = False
     fig.update_layout(
-    margin=dict(l=50,r=50,b=10,t=10,pad=0),
+    margin=dict(l=0,r=0,b=0,t=0,pad=0),
     yaxis_title="kPa",
     legend=dict(yanchor="top", y=0.98, xanchor="left", x=0.01, bgcolor="rgba(0,0,0,0)")
     )
@@ -171,7 +172,7 @@ def kpa_to_percent(df):
         percentage_values.append(percentage)
     return percentage_values
 
-def plot_gauge(value, text):
+def plot_gauge(value, text, name):
     if text == "Helsetilstand":
         gauge_range = {
             'axis' : {'range': [None, 100]},
@@ -189,126 +190,319 @@ def plot_gauge(value, text):
         mode = "gauge+number",
         value = value,
         gauge = gauge_range,
-        title = {'text': text}))
+        title = {'text': name}))
+    
+    fig.update_layout(margin=dict(l=50, r=50, t=50, b=50))
 
     st.plotly_chart(fig, use_container_width=True, config = {'displayModeBar': False,})# 'staticPlot': True})
 
-def varmeveksler(df, series_name):
-    st.write(f"**{series_name}**")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Siste verdi")
-        last_pa_value = int(df.to_numpy()[-1])
-        tab1, tab2 = st.tabs(["Helsetilstand", "Trykkdifferanse"])
-        with tab1:
-            last_kpa_value = kpa_to_percentage(last_pa_value/1000)
-            plot_gauge(value = last_kpa_value, text = "Helsetilstand")
-        with tab2:
-            plot_gauge(value = last_pa_value, text = "Trykkdifferanse")
-    with c2:
-        st.subheader("Historikk")
-        tab1, tab2 = st.tabs(["Helsetilstand", "Trykkdifferanse"])
-        with tab1:
-            percentage_values = kpa_to_percent(df)
-            plot_percentages(x = df.index.values, y = percentage_values)
-        with tab2:
-            y = df[series_name].to_numpy()
-            plot_kpa(x = df.index.values, y = y)
+def varmeveksler(df, series_name, name, state):
+    last_pa_value = int(df.to_numpy()[-1])
+    if state == "Helsetilstand":
+        last_kpa_value = kpa_to_percentage(last_pa_value/1000)
+        plot_gauge(value = last_kpa_value, text = "Helsetilstand", name = name)
+#        percentage_values = kpa_to_percent(df)
+#        plot_percentages(x = df.index.values, y = percentage_values)
+    elif state == "Trykkdifferanse":
+        plot_gauge(value = last_pa_value, text = "Trykkdifferanse", name = name)
+        y = df[series_name].to_numpy()
+        plot_kpa(x = df.index.values, y = y)
     return last_kpa_value
 
 def get_last_week(time_series, properate):
     df, metadata = properate.get_timeseries(time_series)
     return df.to_numpy()[-(24 * 7):], df, metadata
 
-def map():
-    #--
-    melhus = [63.285510, 10.271003]
-    bankhallen = [63.284899, 10.265603]
-    skoleflata = [63.286260, 10.262300]
-    #--
-    m = folium.Map(location=melhus, zoom_start=15)
-    #--
-    marker = folium.Marker(bankhallen, tooltip = "Bankhallen", icon=folium.Icon(icon="glyphicon-home", color="green"))
-    marker.add_to(m)
-    #--
-    marker = folium.Marker(skoleflata, tooltip = "Skoleflata", icon=folium.Icon(icon="glyphicon-home", color="green"))
-    marker.add_to(m)
-    #--
-    st_folium(m, use_container_width=True, returned_objects=[])
+
+def show_pydeck_map(df, last_value):
+    view = pdk.data_utils.compute_view(df[["lng", "lat"]])
+    view.pitch = 140
+    view.bearing = 70
+    view.zoom = 14.5
+
+    color = 0
+    if last_value > 10 and last_value < 20:
+        color = 60
+    if last_value > 20 and last_value < 30:
+        color = 120
+    if last_value > 30 and last_value < 40:
+        color = 180
+    if last_value > 40:
+        color = 255 
     
+    column_layer = pdk.Layer(
+        "ColumnLayer",
+        data=df,
+        get_position=["lng", "lat"],
+        get_elevation="verdi_fornybar_energi_number",
+        elevation_scale=0.0001,
+        radius=10,
+        get_fill_color=[0, color, 0],
+        pickable=True,
+        #auto_highlight=True,
+    )
+    tooltip = {
+        #"html": "<b> Gimse skole </b><br>Fornybar energi er nå verdt {verdi_fornybar_energi} kr.<br>- Grunnvarme: {verdi_grunnvarme} kr<br> - Solceller: {verdi_sol} kr.",
+        "html": "<b> Gimse skole </b><br>Fornybar energi<br>er nå verdt {verdi_fornybar_energi} kr.",
+        "style": {
+        "backgroundColor": "white",
+        "color": "black"
+    },
+    }
+
+    r = pdk.Deck(
+        column_layer,
+        initial_view_state=view,
+        tooltip=tooltip,
+        map_provider="mapbox",
+        map_style=None
+        #map_style=pdk.map_styles.SATELLITE,
+    )
+    
+    return r
 
 
-def main():
+if __name__ == "__main__":
     streamlit_settings()
+    #--
     properate = Properate(ID = "AH_7224_Gammelbakkan_15")
-    map()
+    #--
+    time_series_gshp = "TS_7224_Gammelbakkan_15+Common=100.001-OC001-BB001"
+    time_series_solar = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001"
+    df_gshp_value, metadata_gshp_value = properate.get_timeseries(time_series_gshp)
+    df_solar_value, metadata_solar_value = properate.get_timeseries(time_series_solar)
+    df_merged_values = pd.merge(df_solar_value, df_gshp_value, left_index=True, right_index=True, how='outer')
+    df_merged_values.fillna(0, inplace=True)
+    df_merged_values["Verdi fornybar energi"] = df_merged_values[time_series_gshp] + df_merged_values[time_series_solar]
+    df_merged_values = df_merged_values.drop_duplicates(subset=['Verdi fornybar energi'])
+    df_merged_values['Verdi fornybar energi akkumulert'] = df_merged_values["Verdi fornybar energi"].cumsum()
+    maximum_value_accumulated = int(np.max(df_merged_values['Verdi fornybar energi akkumulert'])*1.1) 
+
+    df_merged_values['Timestamp'] = pd.to_datetime(df_merged_values.index)
+    latest_timestamp = df_merged_values['Timestamp'].max()
+    twenty_four_hours_ago = latest_timestamp - pd.DateOffset(hours=24)
+    df_merged_values_last_24 = df_merged_values[df_merged_values['Timestamp'] >= twenty_four_hours_ago]
+    #--
+    time_series_1 = "TS_7224_Gammelbakkan_15+GB15=320.002-LV001-OE001_Geo_heat_energy-OE001"
+    df_gshp_production_1, metadata_gshp_production_1 = properate.get_timeseries(time_series_1)
+    time_series_2 = "TS_7224_Gammelbakkan_15+GB15=320.003-LV001-OE001_Geo_heat_energy-OE001"
+    df_gshp_production_2, metadata_gshp_production_1 = properate.get_timeseries(time_series_2)
+
+    df_gshp_production = pd.merge(df_gshp_production_1, df_gshp_production_2, left_index=True, right_index=True, how='outer')
+    df_gshp_production["Produsert grunnvarme"] = df_gshp_production[time_series_1] + df_gshp_production[time_series_2]
+    
+    time_series_solar_production = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001"
+    df_solar_production, metadata_solar = properate.get_timeseries(time_series_solar_production)
+
+    df_merged_production = pd.merge(df_gshp_production, df_solar_production, left_index=True, right_index=True, how='outer')
+    df_merged_production.fillna(0, inplace=True)
+    df_merged_production["Produsert fornybar energi"] = df_merged_production["Produsert grunnvarme"] + df_merged_production[time_series_solar_production]
+    df_merged_production['Produsert fornybar energi akkumulert'] = df_merged_production["Produsert fornybar energi"].cumsum()
+    maximum_value_produced = int(np.max(df_merged_production['Produsert fornybar energi akkumulert'])*1.1)
+
+    df_merged_production['Timestamp'] = pd.to_datetime(df_merged_production.index)
+    latest_timestamp = df_merged_production['Timestamp'].max()
+    twenty_four_hours_ago = latest_timestamp - pd.DateOffset(hours=24)
+    df_merged_production_last_24 = df_merged_production[df_merged_production['Timestamp'] >= twenty_four_hours_ago]
+    #--
+
+    col1, col2 = st.columns(2)
+    with col1:        
+        df = pd.DataFrame({
+            "id" : ["Gimse skole"],
+            "lat" : [63.286463],
+            "lng" : [10.263912],
+            "verdi_fornybar_energi" : [f"{int(df_merged_values['Verdi fornybar energi akkumulert'][-1]):,}".replace(",", " ")],
+            "verdi_fornybar_energi_number" : [int(df_merged_values['Verdi fornybar energi akkumulert'][-1])],
+            "verdi_fornybar_momentan" : [f"{int(np.sum(df_merged_values_last_24['Verdi fornybar energi'])):,}".replace(",", " ")],
+#            "verdi_sol" : [int(df_merged_values["Verdi fornybar energi"][-1])],
+#            "verdi_grunnvarme" : [int(df_merged_values["Verdi fornybar energi"][-1])]
+        })
+        r = show_pydeck_map(df = df, last_value = 100)
+        
+        st.pydeck_chart(pydeck_obj = r, use_container_width = True)
+        #--
+    with col2:
+        with st.expander("Gimse skole", expanded = True):
+            c1, c2 = st.columns(2)
+            with c1:
+                fig = px.line(df_merged_values, x=df_merged_values.index, y=df_merged_values["Verdi fornybar energi akkumulert"], title=f'Besparelse<br>• Totalt: {int(df_merged_values["Verdi fornybar energi akkumulert"][-1]):,} kr<br>• Siste 24 timer: {int(np.sum(df_merged_values_last_24["Verdi fornybar energi"])):,} kr'.replace(",", " "))
+                maximum_value = int(np.max(df_merged_values["Verdi fornybar energi akkumulert"])*1.1)
+                fig.update_traces(line_color='#1d3c34', line_width=2)
+                fig.update_xaxes(
+                    title_text='',
+                    ticks="outside",
+                    linecolor="black",
+                    gridcolor="lightgrey",
+                    )
+                fig.update_yaxes(
+                    title_text='Kroner',
+                    range=[0, maximum_value_accumulated],
+                    tickformat=",",
+                    ticks="outside",
+                    linecolor="black",
+                    gridcolor="lightgrey",
+                ) 
+                fig.update_layout(separators="* .*")
+                st.plotly_chart(fig, use_container_width=True)
+            with c2:
+                fig = px.line(df_merged_production, x=df_merged_production.index, y=df_merged_production['Produsert fornybar energi akkumulert'], title=f'Produsert fornybar energi<br>• Totalt: {int(df_merged_production["Produsert fornybar energi akkumulert"][-1]):,} kWh<br>• Siste 24 timer: {int(np.sum(df_merged_production_last_24["Produsert fornybar energi"])):,} kWh'.replace(",", " "))
+                fig.update_traces(line_color='#1d3c34', line_width=2)
+                fig.update_xaxes(
+                    title_text='',
+                    ticks="outside",
+                    linecolor="black",
+                    gridcolor="lightgrey",
+                    )
+                fig.update_yaxes(
+                    title_text='kWh',
+                    range=[0, maximum_value_produced],
+                    tickformat=",",
+                    ticks="outside",
+                    linecolor="black",
+                    gridcolor="lightgrey",
+                )
+                fig.update_layout(separators="* .*")
+                st.plotly_chart(fig, use_container_width=True) 
+
+    #
+    time_loop()
+    st.experimental_rerun()
+
+
+
+
+a = """
+    #--
     c1, c2 = st.columns(2)
     with c1:
-        #-- solceller
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001", properate = properate)
-        st.line_chart(array)
+        time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
+        df, metadata = properate.get_timeseries(time_series)
+        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Bankhallen", state = "Helsetilstand")
     with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- solceller streamet
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-RE001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:        
-        #-- spotpris x energiopptak brønn
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+Common=100.001-OC001-BB001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- verdi solceller
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 1
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 2
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
-    with c1:
-        #-- varmeveksler 3
-        array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001", properate = properate)
-        st.line_chart(array)
-    with c2:
-        st.metric("Siste verdi", value = round(float(array[-1]),2))
+        time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
+        df, metadata = properate.get_timeseries(time_series)
+        bankhallen_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse", state = "Helsetilstand")
     
+#    with c3:
+#        time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001"
+#        df, metadata = properate.get_timeseries(time_series)
+#        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse (virtuell)", state = "Helsetilstand")  
 
 
+       
+    c1, c2 = st.columns(2)
+    with c1:
+        #-- grunnvarme verdi
+        time_series = "TS_7224_Gammelbakkan_15+Common=100.001-OC001-BB001"
+        df_gshp_value, metadata_gshp_value = properate.get_timeseries(time_series)
+        df_gshp_value_last = df_gshp_value[-(1400):]
+        fig = px.line(df_gshp_value_last, x=df_gshp_value_last.index, y=time_series, title='Verdi grunnvarme')
+        maximum_value = int(np.max(df_gshp_value_last[time_series])*1.1) 
+        fig.update_xaxes(
+            title_text='')
+        fig.update_yaxes(
+            title_text='Kroner',
+            range=[0, maximum_value]
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
+        #-- grunnvarme akkumulurt
+        df_gshp_value['akkumulert'] = df_gshp_value[time_series].cumsum()
+        maximum_value_accumulated = int(np.max(df_gshp_value['akkumulert'])*1.1) 
+        fig = px.line(df_gshp_value, x=df_gshp_value.index, y=df_gshp_value["akkumulert"], title='Verdi grunnvarme ')
+        fig.update_xaxes(
+            title_text=''
+            )
+        fig.update_yaxes(
+            title_text='Kroner',
+            range=[0, maximum_value_accumulated])
+        st.plotly_chart(fig, use_container_width=True)
 
-
-    #--
-#    st.title("Varmevekslere")
-    #--
-#    st.header("Bankhallen")
-#    time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
-#    df, metadata = properate.get_timeseries(time_series)
-#    bankhallen_helsetilstand = varmeveksler(df, series_name = time_series)
-    #--
-#    st.header("Skoleflata")
-#    time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
-#    df, metadata = properate.get_timeseries(time_series)
-#    skoleflata_helsetilstand = varmeveksler(df, series_name = time_series)
-    #--
-#    map(bankhallen_helsetilstand = bankhallen_helsetilstand, skoleflata_helsetilstand = skoleflata_helsetilstand)
+        #--grunnvarme produksjon
+        time_series_1 = "TS_7224_Gammelbakkan_15+GB15=320.002-LV001-OE001_Geo_heat_energy-OE001"
+        df_gshp_production_1, metadata_gshp_production_1 = properate.get_timeseries(time_series_1)
+        #--
+        time_series_2 = "TS_7224_Gammelbakkan_15+GB15=320.003-LV001-OE001_Geo_heat_energy-OE001"
+        df_gshp_production_2, metadata_gshp_production_1 = properate.get_timeseries(time_series_2)
         
-if __name__ == "__main__":
-    main()
+        df_gshp_production = pd.merge(df_gshp_production_1, df_gshp_production_2, left_index=True, right_index=True, how='outer')
+        df_gshp_production["varmeproduksjon"] = df_gshp_production[time_series_1] + df_gshp_production[time_series_2]
+
+        df_gshp_production_last = df_gshp_production[-(1400):]
+        fig = px.line(df_gshp_production_last, x=df_gshp_production_last.index, y=df_gshp_production_last["varmeproduksjon"], title='Grunnvarmeproduksjon')
+        fig.update_xaxes(title_text='Tid')
+        fig.update_yaxes(title_text='Effekt [kW]')
+        st.plotly_chart(fig, use_container_width=True)
+
+        #-- grunnvarme produksjon akkumulurt
+        df_gshp_production['akkumulert'] = df_gshp_production["varmeproduksjon"].cumsum()
+        fig = px.line(df_gshp_production, x=df_gshp_production.index, y=df_gshp_production["akkumulert"], title='Grunnvarmeproduksjon')
+        fig.update_xaxes(
+            title_text=''
+            )
+        fig.update_yaxes(
+            title_text='kWh',
+            range=[0, maximum_value_accumulated])
+        st.plotly_chart(fig, use_container_width=True)
+
+    with c2:
+        #-- solceller verdi
+        time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001-OF001"
+        df_solar_value, metadata_solar_value = properate.get_timeseries(time_series)
+        df_solar_value_last = df_solar_value[-(1400):]
+        fig = px.line(df_solar_value_last, x=df_solar_value_last.index, y=time_series, title='Verdi solceller')
+        fig.update_xaxes(
+            title_text=''
+            )
+        fig.update_yaxes(
+            title_text='Kroner',
+            range=[0, maximum_value])
+        st.plotly_chart(fig, use_container_width=True)
+
+        #-- solceller akkumulurt
+        df_solar_value['akkumulert'] = df_solar_value[time_series].cumsum()
+        fig = px.line(df_solar_value, x=df_solar_value.index, y=df_solar_value["akkumulert"], title='Verdi solceller')
+        fig.update_xaxes(
+            title_text=''
+            )
+        fig.update_yaxes(
+            title_text='Kroner',
+            range=[0, maximum_value_accumulated])
+        st.plotly_chart(fig, use_container_width=True)
+
+        #--solceller produksjon
+        time_series = "TS_7224_Gammelbakkan_15+GB15=471.001-OE001-OE001"
+        df_solar_production, metadata_solar = properate.get_timeseries(time_series)
+        df_solar_production_last = df_solar_production[-(1400):]
+        fig = px.line(df_solar_production_last, x=df_solar_production_last.index, y=time_series, title='Solcelleproduksjon')
+        fig.update_xaxes(title_text='Tid')
+        fig.update_yaxes(title_text='Effekt [kW]')
+        st.plotly_chart(fig, use_container_width=True)
 
 
+        #--
+        #-- akkumulert
+#        df_cost_accumulated = pd.merge(df_gshp_, df_gshp_production_2, left_index=True, right_index=True, how='outer')
+#        df_gshp_production["akkumulert_verdi"] = df_gshp_production[time_series_1] + df_gshp_production[time_series_2]
+#        df_solar_value['akkumulert'] = df_solar_value[time_series].cumsum()
+#        fig = px.line(df_solar_value, x=df_solar_value.index, y=df_solar_value["akkumulert"], title='Verdi solceller')
+#        fig.update_xaxes(
+#            title_text=''
+#            )
+#        fig.update_yaxes(
+#            title_text='Kroner',
+#            range=[0, maximum_value_accumulated])
+#        st.plotly_chart(fig, use_container_width=True)
 
+#    df_merge = pd.merge(df_solar_value, df_gshp_value, left_index=True, right_index=True, how='outer')
+#    df_merge.fillna(0, inplace=True)
+#    fig = px.bar(df_merge, x=df_merge.index, y=df_merge.columns, title='Verdi fornybar energi')
+#    fig.update_xaxes(title_text='Tid')
+#    fig.update_yaxes(title_text='Kroner')
+#    fig.update_layout(barmode='stack')
+#    st.plotly_chart(fig)
+       
+"""   
 
+    
