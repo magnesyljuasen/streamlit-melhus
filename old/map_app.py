@@ -4,14 +4,13 @@ from time import time
 from jose import jwt
 from cognite.client import ClientConfig, CogniteClient
 from cognite.client.credentials import Token
-from old._map import Map
+from _map import Map
 from bs4 import BeautifulSoup
 from pathlib import Path
 import base64
 from folium import IFrame
 import imageio as iio
 import numpy as np
-
 
 #--
 import streamlit as st
@@ -25,8 +24,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed")
 
-with open("main.css") as f:
-    st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
+#with open("main.css") as f:
+#    st.markdown("<style>{}</style>".format(f.read()), unsafe_allow_html=True)
 
 #------- live count
 count = st_autorefresh(interval=2 * 60 * 1000, limit=100, key="fizzbuzzcounter")

@@ -270,6 +270,7 @@ def main():
     with c1:
         #-- varmeveksler 1
         array, df, metadata = get_last_week(time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot", properate = properate)
+        plot_gauge(value = array[-1], text = "hei")
         st.line_chart(array)
     with c2:
         st.metric("Siste verdi", value = round(float(array[-1]),2))

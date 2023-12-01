@@ -198,11 +198,14 @@ def plot_gauge(value, text, name):
 
 def varmeveksler(df, series_name, name, state):
     last_pa_value = int(df.to_numpy()[-1])
+    tab1, tab2 = st.tabs(["Nåtilstand", "Historikk"])
     if state == "Helsetilstand":
-        last_kpa_value = kpa_to_percentage(last_pa_value/1000)
-        plot_gauge(value = last_kpa_value, text = "Helsetilstand", name = name)
-#        percentage_values = kpa_to_percent(df)
-#        plot_percentages(x = df.index.values, y = percentage_values)
+        with tab1:
+            last_kpa_value = kpa_to_percentage(last_pa_value/1000)
+            plot_gauge(value = last_kpa_value, text = "Helsetilstand", name = name)
+        with tab2:
+            percentage_values = kpa_to_percent(df)
+            plot_percentages(x = df.index.values, y = percentage_values)
     elif state == "Trykkdifferanse":
         plot_gauge(value = last_pa_value, text = "Trykkdifferanse", name = name)
         y = df[series_name].to_numpy()
@@ -282,6 +285,7 @@ if __name__ == "__main__":
     latest_timestamp = df_merged_values['Timestamp'].max()
     twenty_four_hours_ago = latest_timestamp - pd.DateOffset(hours=24)
     df_merged_values_last_24 = df_merged_values[df_merged_values['Timestamp'] >= twenty_four_hours_ago]
+
     #--
     time_series_1 = "TS_7224_Gammelbakkan_15+GB15=320.002-LV001-OE001_Geo_heat_energy-OE001"
     df_gshp_production_1, metadata_gshp_production_1 = properate.get_timeseries(time_series_1)
@@ -323,7 +327,7 @@ if __name__ == "__main__":
         st.pydeck_chart(pydeck_obj = r, use_container_width = True)
         #--
     with col2:
-        with st.expander("Gimse skole", expanded = True):
+        with st.expander("Verdi og produsert fornybar energi", expanded = True):
             c1, c2 = st.columns(2)
             with c1:
                 fig = px.line(df_merged_values, x=df_merged_values.index, y=df_merged_values["Verdi fornybar energi akkumulert"], title=f'Besparelse<br>• Totalt: {int(df_merged_values["Verdi fornybar energi akkumulert"][-1]):,} kr<br>• Siste 24 timer: {int(np.sum(df_merged_values_last_24["Verdi fornybar energi"])):,} kr'.replace(",", " "))
@@ -364,17 +368,8 @@ if __name__ == "__main__":
                 )
                 fig.update_layout(separators="* .*")
                 st.plotly_chart(fig, use_container_width=True) 
-
-    #
-    time_loop()
-    st.experimental_rerun()
-
-
-
-
-a = """
-    #--
-    c1, c2 = st.columns(2)
+      #--
+    c1, c2, c3 = st.columns(3)
     with c1:
         time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
         df, metadata = properate.get_timeseries(time_series)
@@ -384,13 +379,23 @@ a = """
         df, metadata = properate.get_timeseries(time_series)
         bankhallen_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse", state = "Helsetilstand")
     
-#    with c3:
-#        time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001"
-#        df, metadata = properate.get_timeseries(time_series)
-#        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse (virtuell)", state = "Helsetilstand")  
+    with c3:
+        time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001"
+        df, metadata = properate.get_timeseries(time_series)
+        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse (virtuell)", state = "Helsetilstand")  
 
 
-       
+    #
+    time_loop()
+    st.experimental_rerun()
+
+
+
+
+
+  
+
+a = """       
     c1, c2 = st.columns(2)
     with c1:
         #-- grunnvarme verdi
