@@ -50,7 +50,6 @@ class Properate:
         if not exp:
             return True
         exp = int(exp)
-        # Renew if token has less than 2 min lifetime left
         remaining = exp - time()
         return remaining < 120
 
@@ -69,7 +68,6 @@ class Properate:
         return result.get("access_token")
 
     def token(self):
-        #global self._last_token
         if self._last_token is None or self.token_expired(self._last_token):
             self._last_token = self.request_token()
         return self._last_token
@@ -216,7 +214,6 @@ def get_last_week(time_series, properate):
     df, metadata = properate.get_timeseries(time_series)
     return df.to_numpy()[-(24 * 7):], df, metadata
 
-
 def show_pydeck_map(df, last_value):
     view = pdk.data_utils.compute_view(df[["lng", "lat"]])
     view.pitch = 140
@@ -263,7 +260,6 @@ def show_pydeck_map(df, last_value):
     )
     
     return r
-
 
 if __name__ == "__main__":
     streamlit_settings()
