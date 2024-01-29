@@ -99,7 +99,6 @@ class Properate:
             df, metadata = self.get_timeseries(external_id_list[i])
             st.write(metadata)
             st.line_chart(df.to_numpy())
-            st.markdown("---")
 
 def plot_percentages(x, y):
     fig = px.line(x=x, y=y)
