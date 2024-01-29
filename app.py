@@ -189,6 +189,7 @@ def plot_gauge(value, text, name):
         mode = "gauge+number",
         value = value,
         gauge = gauge_range,
+        number={'suffix': '%'},
         title = {'text': name}))
     
     fig.update_layout(margin=dict(l=50, r=50, t=50, b=50))
@@ -304,7 +305,7 @@ if __name__ == "__main__":
     #df = reduce(lambda left, right: pd.merge(left, right, left_index=True, right_index=True), dataframes)
     #df.rename(columns=dict(zip(df.columns, new_column_names)), inplace=True)
     df["ELPRICE"] = df["GSHP_VALUE"] / (df["GSHP_ENERGY_1"] + df["GSHP_ENERGY_2"])
-    df["NETTLEIE"] = df["ELPRICE"] / 2 # hvilken modell skal vi gå for?
+    df["NETTLEIE"] = 0.2 # hvilken modell skal vi gå for?
     df["ELPRICE_WITH_NETTLEIE"] = df["ELPRICE"] + df["NETTLEIE"]
     df["GSHP_VALUE_WITH_NETTLEIE"] = df["ELPRICE_WITH_NETTLEIE"] * (df["GSHP_ENERGY_1"] + df["GSHP_ENERGY_2"])
     df["SOLAR_VALUE_WITH_NETTLEIE"] = df["ELPRICE_WITH_NETTLEIE"] * df["SOLAR_ENERGY"]
@@ -424,22 +425,20 @@ if __name__ == "__main__":
 #                fig.update_layout(separators="* .*")
 #                st.plotly_chart(fig, use_container_width=True) 
       #--
-    st.write("")
-    st.markdown("---")
     c1, c2, c3 = st.columns(3)
     with c1:
         time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot"
         df, metadata = properate.get_timeseries(time_series)
-        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Skoleflata", state = "Helsetilstand")
+        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Produksjonsbrønn, Skoleflata", state = "Helsetilstand")
     with c2:
         time_series = "TS_7224_Gammelbakkan_15+GB15=320.002-RD001_dP_hot"
         df, metadata = properate.get_timeseries(time_series)
-        bankhallen_helsetilstand = varmeveksler(df, series_name = time_series, name = "Bankhallen", state = "Helsetilstand")
+        bankhallen_helsetilstand = varmeveksler(df, series_name = time_series, name = "Produksjonsbrønn, Bankhallen", state = "Helsetilstand")
     
     with c3:
         time_series = "TS_7224_Gammelbakkan_15+GB15=320.003-RD001_dP_hot-OF001"
         df, metadata = properate.get_timeseries(time_series)
-        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Lena Terrasse (virtuell)", state = "Helsetilstand")  
+        skoleflata_helsetilstand = varmeveksler(df, series_name = time_series, name = "Produksjonsbrønn, Lena Terrasse (virtuell)", state = "Helsetilstand")  
 
 
     #
