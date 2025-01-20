@@ -360,7 +360,7 @@ if __name__ == "__main__":
             fig.update_layout(
                 xaxis_title='',
                 yaxis_title='Kroner',
-                yaxis=dict(range=[0, 800000], tickformat=",", ticks="outside", linecolor="black", gridcolor="lightgrey"),
+                yaxis=dict(range=[0, 1500000], tickformat=",", ticks="outside", linecolor="black", gridcolor="lightgrey"),
                 xaxis=dict(linecolor="black", gridcolor="lightgrey"),
                 separators="* .*",
                 margin=dict(l=10, r=10, t=10, b=10)
@@ -391,7 +391,7 @@ if __name__ == "__main__":
             fig.update_layout(
                 xaxis_title='',
                 yaxis_title='kWh',
-                yaxis=dict(range=[0, 800000], tickformat=",", ticks="outside", linecolor="black", gridcolor="lightgrey"),
+                yaxis=dict(range=[0, 1500000], tickformat=",", ticks="outside", linecolor="black", gridcolor="lightgrey"),
                 xaxis=dict(linecolor="black", gridcolor="lightgrey"),
                 separators="* .*",
                 margin=dict(l=10, r=10, t=10, b=10)
